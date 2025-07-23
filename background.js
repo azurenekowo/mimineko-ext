@@ -52,6 +52,26 @@ function notify(tabId, type, message, options = {}) {
     });
 }
 
+function sequentialDownloader(url, filename) {
+  return new Promise((resolve, reject) => {
+    chrome.downloads.download(
+      {
+        url,
+        filename,
+        saveAs: false
+      },
+      (downloadId) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(downloadId);
+        }
+      }
+    );
+  });
+}
+
+
 async function downloadManga(id, tabId) {
     try {
         const meta = await fetchJson(`https://mimihentai.com/api/v1/manga/info/${id}`);
@@ -64,39 +84,21 @@ async function downloadManga(id, tabId) {
             const chapterTitle = `${chapter.id}-${chapter.title}`.replace(/[\\/:*?"<>|]/g, '_');
             notify(tabId, 'info', `📂 Bắt đầu tải: ${chapterTitle}`);
 
-            const zip = new JSZip();
             const pageResp = await fetchJson(`https://mimihentai.com/api/v1/manga/chapter?id=${chapter.id}`);
             const pages = Array.isArray(pageResp.pages) ? pageResp.pages : [];
-
             for (let i = 0; i < pages.length; i++) {
                 const url = pages[i];
+                const index = String(i + 1).padStart(3, '0');
+                const filename = `${sanitizeFilename(title)}/${sanitizeFilename(chapterTitle)}/${extractFilename(url)}.jpg`;
 
                 try {
-                    const blob = await fetchBlob(url);
-                    const filename = extractFilename(url, `${String(i + 1).padStart(3, '0')}`) + '.jpg';
-                    zip.file(filename, blob)
+                    await sequentialDownloader(url, filename); 
                 } catch (err) {
-                    console.warn(`⚠ Failed to fetch image ${i + 1}:`, err);
+                    console.warn(`❌ Image ${i + 1} failed:`, err);
                 }
+                
+                await new Promise(res => setTimeout(res, 50));
             }
-
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const dataUrl = await blobToDataUrl(zipBlob);
-
-            console.log(`[📦] Preparing download for: ${sanitizeFilename(title)}/${sanitizeFilename(chapterTitle)}`);
-
-            chrome.downloads.download({
-                url: dataUrl,
-                filename: `${sanitizeFilename(title)}/${sanitizeFilename(chapterTitle)}.zip`,
-                saveAs: false
-            }, (downloadId) => {
-                if (chrome.runtime.lastError) {
-                    console.error(`[DOWNLOAD ERROR]`, chrome.runtime.lastError);
-                } else {
-                    console.log(`[✅] Download triggered: ${downloadId}`);
-                }
-            });
-
             notify(tabId, 'success', `📂 Hoàn tất: ${chapterTitle}`, {
                 id: 'mimidl-progress',
                 persistent: false

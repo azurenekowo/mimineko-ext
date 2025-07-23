@@ -141,5 +141,4 @@
             notifyFrontend(msg.message, msg.type);
         }
     });
-
 })();
