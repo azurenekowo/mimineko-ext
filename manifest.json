@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "mimineko",
+  "version": "1.0.5",
+  "description": "Tải (lậu) truyện từ mimihentai.com",
+  "permissions": ["scripting", "downloads"],
+  "host_permissions": [
+    "https://mimihentai.com/*",
+    "https://cdn.mimihentai.com/*"
+],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mimihentai.com/g/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/jszip.min.js", "lib/FileSaver.min.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": {
+    "128": "mimi.ico",
+    "256": "mimi.ico"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
